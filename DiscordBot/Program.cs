@@ -22,7 +22,15 @@ class Program
             .ConfigureServices((context, services) =>
             {
                 services.AddSingleton(configuration);
-                services.AddSingleton<DiscordSocketClient>();
+                services.AddSingleton<DiscordSocketClient>(provider =>
+                {
+                    var config = new DiscordSocketConfig
+                    {
+                        GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent,
+                        LogLevel = LogSeverity.Info
+                    };
+                    return new DiscordSocketClient(config);
+                });
                 services.AddSingleton<BotService>();
             })
             .ConfigureLogging(logging =>
