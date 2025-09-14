@@ -7,8 +7,9 @@ A Discord bot built with .NET that responds to PING with PONG and includes timer
 ```
 Discord-bot-.net/
 ├── DiscordBot/          # Discord bot application
-├── API/                 # .NET API backend (to be created)
-├── ReactFrontend/       # React configuration UI (to be created)
+├── API/                 # .NET API backend
+├── API.Tests/           # Unit tests for API project
+├── ReactFrontend/       # React configuration UI
 └── README.md
 ```
 
@@ -326,6 +327,125 @@ Timers (
 )
 ```
 
+## Testing
+
+The project includes a comprehensive test suite to ensure code quality and reliability.
+
+### Test Projects
+
+#### API.Tests
+Unit tests for the API project covering core functionality:
+- **Authentication**: JWT token generation and validation
+- **Timer Management**: Creating, retrieving, and managing timers
+- **User Blocking**: Blocking and unblocking Discord users
+- **Database Operations**: Entity Framework operations with in-memory database
+
+### Running Tests
+
+#### Run All Tests
+```bash
+# Run all tests in the solution
+dotnet test
+
+# Run tests with detailed output
+dotnet test --verbosity normal
+
+# Run tests for specific project
+dotnet test API.Tests/API.Tests.csproj
+```
+
+#### Test Coverage Report
+```bash
+# Generate coverage report (requires coverlet)
+dotnet test --collect:"XPlat Code Coverage"
+
+# View coverage in HTML format
+dotnet tool install -g dotnet-reportgenerator-globaltool
+reportgenerator -reports:"**/coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html
+```
+
+### Test Structure
+
+#### Current Test Coverage
+- ✅ **AuthController Tests**: Token generation with valid/invalid API keys
+- ✅ **BlockedUsersController Tests**: User blocking operations with database integration
+- ✅ **TimerController Tests**: Timer creation, retrieval, and error handling
+- ✅ **Database Integration Tests**: In-memory Entity Framework testing
+
+#### Test Dependencies
+- **xUnit**: Testing framework
+- **Moq**: Mocking library for dependencies
+- **Microsoft.EntityFrameworkCore.InMemory**: In-memory database for testing
+- **Microsoft.AspNetCore.Mvc.Testing**: Integration testing support
+
+#### Example Test Structure
+```csharp
+[Fact]
+public async Task TimerController_CreateTimer_ValidRequest_ReturnsCreated()
+{
+    // Arrange
+    var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+        .Options;
+
+    await using var context = new ApplicationDbContext(options);
+    var controller = new TimerController(context, mockLogger.Object);
+
+    // Act
+    var result = await controller.CreateTimer(request);
+
+    // Assert
+    var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+    Assert.Equal(request.UserId, response.UserId);
+}
+```
+
+### Test Best Practices
+
+#### Mocking
+- Use Moq for mocking dependencies like ILogger and IConfiguration
+- Create isolated test instances with unique in-memory databases
+- Mock external services to ensure tests are deterministic
+
+#### Database Testing
+- Use Entity Framework In-Memory provider for database tests
+- Each test uses a unique database name to prevent interference
+- Tests automatically dispose of database contexts
+
+#### Assertion Patterns
+- Use specific assertion types (`Assert.IsType<T>`, `Assert.Equal`)
+- Test both success and failure scenarios
+- Verify response types and content
+
+### Continuous Integration
+
+Tests are designed to run in CI/CD environments:
+
+```yaml
+# Example GitHub Actions workflow
+- name: Run Tests
+  run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage"
+  
+- name: Upload Coverage
+  uses: codecov/codecov-action@v3
+  with:
+    files: ./coverage.cobertura.xml
+```
+
+### Adding New Tests
+
+When adding new features, include corresponding tests:
+
+1. **Controller Tests**: Test HTTP endpoints and response codes
+2. **Service Tests**: Test business logic and data operations
+3. **Integration Tests**: Test end-to-end functionality
+4. **Unit Tests**: Test individual methods and edge cases
+
+**Test Naming Convention:**
+`{ClassName}_{MethodName}_{Scenario}_{ExpectedResult}`
+
+Example: `AuthController_GetToken_InvalidApiKey_ReturnsUnauthorized`
+
 ## Features Implemented
 - [x] Basic Discord bot connection
 - [x] PING/PONG command response
@@ -344,6 +464,10 @@ Timers (
 - [x] Authentication for admin access
 - [x] Blocked user API endpoints (GET, POST, DELETE)
 - [x] Real-time blocked user checking in Discord bot
+- [x] Comprehensive unit test suite with xUnit and Moq
+- [x] API controller testing with in-memory database
+- [x] Authentication and JWT token testing
+- [x] Database integration testing
 
 ## Architecture Overview
 
