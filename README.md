@@ -210,9 +210,17 @@ The React app will start on `http://localhost:3000`
 - Tokens are automatically refreshed when they expire
 - All API calls include the Bearer token in headers
 
-#### Login Credentials
+#### Login Credentials (Demo Only)
 - **Username**: `admin`
 - **Password**: `discord123`
+
+⚠️ **Demo Authentication**: Hardcoded credentials for demonstration only.
+
+**Production Alternatives:**
+- Microsoft Azure AD (Enterprise SSO)
+- Discord OAuth2 (User-friendly for Discord users)
+- Custom user database with ASP.NET Core Identity
+- Enhanced API key system with database storage
 
 #### Features
 - 📊 **Dashboard**: View bot statistics and status
