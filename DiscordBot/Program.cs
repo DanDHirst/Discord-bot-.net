@@ -1,9 +1,12 @@
 using Discord;
 using Discord.WebSocket;
+using DiscordBot.Models;
+using DiscordBot.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace DiscordBot;
 
@@ -31,7 +34,19 @@ class Program
                     };
                     return new DiscordSocketClient(config);
                 });
+                
+                // Configure HttpClient with SSL certificate bypass for development
+                services.AddHttpClient<TimerApiService>(client =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                });
+                
+                services.AddSingleton<TimerApiService>();
                 services.AddSingleton<BotService>();
+                services.AddHostedService<TimerNotificationService>();
             })
             .ConfigureLogging(logging =>
             {
@@ -40,12 +55,15 @@ class Program
             })
             .Build();
 
+        // Start the host (this will start all hosted services including TimerNotificationService)
+        await host.StartAsync();
+        
         // Start the bot
         var botService = host.Services.GetRequiredService<BotService>();
         await botService.StartAsync();
 
         // Keep the application running
-        await Task.Delay(-1);
+        await host.WaitForShutdownAsync();
     }
 }
 
@@ -54,12 +72,14 @@ public class BotService
     private readonly DiscordSocketClient _client;
     private readonly IConfiguration _configuration;
     private readonly ILogger<BotService> _logger;
+    private readonly TimerApiService _timerApiService;
 
-    public BotService(DiscordSocketClient client, IConfiguration configuration, ILogger<BotService> logger)
+    public BotService(DiscordSocketClient client, IConfiguration configuration, ILogger<BotService> logger, TimerApiService timerApiService)
     {
         _client = client;
         _configuration = configuration;
         _logger = logger;
+        _timerApiService = timerApiService;
 
         // Configure Discord client events
         _client.Log += LogAsync;
@@ -99,13 +119,87 @@ public class BotService
         if (message.Author.IsBot)
             return;
 
-        var content = message.Content.Trim().ToUpperInvariant();
+        // Debug logging to see what we're receiving
+        _logger.LogInformation($"Message received from {message.Author.Username}: '{message.Content}' (Length: {message.Content.Length})");
+        _logger.LogInformation($"Channel: {message.Channel.Name}, Author ID: {message.Author.Id}");
+
+        var content = message.Content.Trim();
+
+        if (string.IsNullOrEmpty(content))
+        {
+            _logger.LogWarning("Received empty message content - check Message Content Intent!");
+            return;
+        }
 
         // Handle PING command
-        if (content == "PING")
+        if (content.ToUpperInvariant() == "PING")
         {
             _logger.LogInformation($"Received PING from {message.Author.Username}");
             await message.Channel.SendMessageAsync("PONG");
+            return;
+        }
+
+        // Handle TIMER command - matches "TIMER <number>" or "TIMER <number> <message>"
+        var timerMatch = Regex.Match(content, @"^TIMER\s+(\d+)(?:\s+(.+))?$", RegexOptions.IgnoreCase);
+        if (timerMatch.Success)
+        {
+            await HandleTimerCommand(message, timerMatch);
+            return;
+        }
+
+        // Log other messages for debugging
+        _logger.LogInformation($"Received non-command message: '{content}'");
+    }
+
+    private async Task HandleTimerCommand(SocketMessage message, Match timerMatch)
+    {
+        try
+        {
+            var durationString = timerMatch.Groups[1].Value;
+            var customMessage = timerMatch.Groups.Count > 2 ? timerMatch.Groups[2].Value : null;
+
+            if (!int.TryParse(durationString, out var duration) || duration < 1 || duration > 1440)
+            {
+                await message.Channel.SendMessageAsync("⚠️ Please provide a valid duration between 1 and 1440 minutes (24 hours).\n" +
+                                                       "Usage: `TIMER <minutes>` or `TIMER <minutes> <reminder message>`");
+                return;
+            }
+
+            _logger.LogInformation($"Creating {duration}-minute timer for {message.Author.Username}");
+
+            var timerRequest = new CreateTimerRequest
+            {
+                UserId = message.Author.Id.ToString(),
+                Username = message.Author.Username,
+                ChannelId = message.Channel.Id,
+                DurationMinutes = duration,
+                Message = customMessage
+            };
+
+            var createdTimer = await _timerApiService.CreateTimerAsync(timerRequest);
+
+            if (createdTimer != null)
+            {
+                var confirmMessage = $"✅ Timer set for {duration} minute{(duration == 1 ? "" : "s")}! I'll notify you when it's done.";
+                if (!string.IsNullOrEmpty(customMessage))
+                {
+                    confirmMessage += $"\n💭 Reminder: {customMessage}";
+                }
+                confirmMessage += $"\n🕐 Expires at: <t:{((DateTimeOffset)createdTimer.ExpiresAt).ToUnixTimeSeconds()}:F>";
+
+                await message.Channel.SendMessageAsync(confirmMessage);
+                _logger.LogInformation($"Successfully created timer {createdTimer.Id} for user {message.Author.Username}");
+            }
+            else
+            {
+                await message.Channel.SendMessageAsync("❌ Sorry, I couldn't create your timer. Please try again later.");
+                _logger.LogError($"Failed to create timer for user {message.Author.Username}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error handling timer command from {message.Author.Username}");
+            await message.Channel.SendMessageAsync("❌ An error occurred while setting up your timer. Please try again.");
         }
     }
 }
