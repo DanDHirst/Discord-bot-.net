@@ -76,9 +76,34 @@ The API will start on `https://localhost:7001` (or the port shown in console).
 #### API Documentation
 Once running, visit `https://localhost:7001/swagger` for interactive API documentation.
 
-### 4. Running Both Services Together
+### 4. React Frontend Setup
 
-For full timer functionality, you need to run both the API and Discord bot:
+#### Install Dependencies
+```bash
+cd ReactFrontend
+npm install
+```
+
+#### Start Development Server
+```bash
+npm start
+```
+
+The React app will start on `http://localhost:3000`
+
+#### Login Credentials
+- **Username**: `admin`
+- **Password**: `discord123`
+
+#### Features
+- 📊 **Dashboard**: View bot statistics and status
+- 🚫 **Blocked Users**: Manage user blocking/unblocking
+- 🔐 **Authentication**: Secure access to admin interface
+- 📱 **Responsive Design**: Works on desktop and mobile
+
+### 5. Running All Services Together
+
+For full functionality, run all three services:
 
 #### Terminal/Command Prompt Method:
 ```bash
@@ -89,12 +114,16 @@ dotnet run
 # Terminal 2 - Start Discord Bot (in new terminal)
 cd DiscordBot
 dotnet run
+
+# Terminal 3 - Start React Frontend (in new terminal)
+cd ReactFrontend
+npm start
 ```
 
 #### VS Code Debug Method:
 1. **Start API**: Select "Debug API" and press F5
 2. **Start Bot**: Select "Debug Discord Bot" and press F5
-3. Both will run simultaneously for full functionality
+3. **Start React**: Open terminal and run `cd ReactFrontend && npm start`
 
 ## API Endpoints
 
@@ -169,8 +198,11 @@ Timers (
 - [x] Timer expiration notifications with user mentions
 - [x] Background service for checking expired timers
 - [x] Comprehensive logging and error handling
-- [ ] React frontend
-- [ ] User blocking system
+- [x] React frontend with Discord theme
+- [x] User blocking system with web interface
+- [x] Authentication for admin access
+- [x] Blocked user API endpoints (GET, POST, DELETE)
+- [x] Real-time blocked user checking in Discord bot
 
 ## Architecture Overview
 

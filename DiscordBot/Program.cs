@@ -44,7 +44,19 @@ class Program
                     ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
                 });
                 
+                services.AddHttpClient<BlockedUserService>((serviceProvider, client) =>
+                {
+                    var config = serviceProvider.GetRequiredService<IConfiguration>();
+                    var apiBaseUrl = config["API:BaseUrl"] ?? "https://localhost:7001";
+                    client.BaseAddress = new Uri(apiBaseUrl);
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                });
+                
                 services.AddSingleton<TimerApiService>();
+                services.AddSingleton<BlockedUserService>();
                 services.AddSingleton<BotService>();
                 services.AddHostedService<TimerNotificationService>();
             })
@@ -73,13 +85,15 @@ public class BotService
     private readonly IConfiguration _configuration;
     private readonly ILogger<BotService> _logger;
     private readonly TimerApiService _timerApiService;
+    private readonly BlockedUserService _blockedUserService;
 
-    public BotService(DiscordSocketClient client, IConfiguration configuration, ILogger<BotService> logger, TimerApiService timerApiService)
+    public BotService(DiscordSocketClient client, IConfiguration configuration, ILogger<BotService> logger, TimerApiService timerApiService, BlockedUserService blockedUserService)
     {
         _client = client;
         _configuration = configuration;
         _logger = logger;
         _timerApiService = timerApiService;
+        _blockedUserService = blockedUserService;
 
         // Configure Discord client events
         _client.Log += LogAsync;
@@ -128,6 +142,17 @@ public class BotService
         if (string.IsNullOrEmpty(content))
         {
             _logger.LogWarning("Received empty message content - check Message Content Intent!");
+            return;
+        }
+
+        // Check if user is blocked
+        var userId = message.Author.Id.ToString();
+        var isBlocked = await _blockedUserService.IsUserBlockedAsync(userId);
+        
+        if (isBlocked)
+        {
+            _logger.LogInformation($"Blocked user {message.Author.Username} ({userId}) attempted to use bot");
+            await message.Channel.SendMessageAsync($"🚫 {message.Author.Mention}, you are currently blocked from using bot commands.");
             return;
         }
 

@@ -10,6 +10,7 @@ public class ApplicationDbContext : DbContext
     }
 
     public DbSet<API.Models.Timer> Timers { get; set; }
+    public DbSet<BlockedUser> BlockedUsers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,6 +30,19 @@ public class ApplicationDbContext : DbContext
 
             // Index for faster queries on expired timers
             entity.HasIndex(t => new { t.ExpiresAt, t.IsCompleted });
+        });
+
+        modelBuilder.Entity<BlockedUser>(entity =>
+        {
+            entity.HasKey(b => b.Id);
+            entity.Property(b => b.UserId).IsRequired().HasMaxLength(50);
+            entity.Property(b => b.Username).IsRequired().HasMaxLength(100);
+            entity.Property(b => b.BlockedAt).IsRequired();
+            entity.Property(b => b.BlockedBy).IsRequired().HasMaxLength(100);
+            entity.Property(b => b.Reason).HasMaxLength(500);
+
+            // Index for faster queries on blocked users
+            entity.HasIndex(b => b.UserId).IsUnique();
         });
     }
 }
