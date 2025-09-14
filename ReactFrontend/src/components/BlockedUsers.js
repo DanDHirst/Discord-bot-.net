@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiService from '../services/apiService';
 
 const BlockedUsers = () => {
   const [blockedUsers, setBlockedUsers] = useState([]);
@@ -18,8 +18,8 @@ const BlockedUsers = () => {
   const fetchBlockedUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/blockedusers');
-      setBlockedUsers(response.data.blockedUsers);
+      const data = await apiService.getBlockedUsers();
+      setBlockedUsers(data.blockedUsers);
     } catch (error) {
       console.error('Error fetching blocked users:', error);
       alert('Failed to fetch blocked users');
@@ -38,15 +38,17 @@ const BlockedUsers = () => {
 
     try {
       setAdding(true);
-      const response = await axios.post('/api/blockedusers', {
+      const userData = {
         userId: newUser.userId,
         username: newUser.username,
         reason: newUser.reason || null,
         blockedBy: 'admin' // In a real app, this would be the current user
-      });
+      };
+      
+      const newBlockedUser = await apiService.blockUser(userData);
 
       // Add the new user to the list
-      setBlockedUsers([response.data, ...blockedUsers]);
+      setBlockedUsers([newBlockedUser, ...blockedUsers]);
       
       // Clear the form
       setNewUser({
@@ -75,7 +77,7 @@ const BlockedUsers = () => {
 
     try {
       const userToUnblock = blockedUsers.find(user => user.userId === userId);
-      await axios.delete(`/api/blockedusers/${userToUnblock.id}`);
+      await apiService.unblockUser(userToUnblock.id);
       
       // Remove the user from the list
       setBlockedUsers(blockedUsers.filter(user => user.userId !== userId));

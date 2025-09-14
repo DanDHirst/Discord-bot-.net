@@ -36,7 +36,7 @@ class Program
                 });
                 
                 // Configure HttpClient with SSL certificate bypass for development
-                services.AddHttpClient<TimerApiService>(client =>
+                services.AddHttpClient<AuthService>(client =>
                 {
                     client.Timeout = TimeSpan.FromSeconds(30);
                 }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
@@ -44,17 +44,7 @@ class Program
                     ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
                 });
                 
-                services.AddHttpClient<BlockedUserService>((serviceProvider, client) =>
-                {
-                    var config = serviceProvider.GetRequiredService<IConfiguration>();
-                    var apiBaseUrl = config["API:BaseUrl"] ?? "https://localhost:7001";
-                    client.BaseAddress = new Uri(apiBaseUrl);
-                    client.Timeout = TimeSpan.FromSeconds(30);
-                }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-                });
-                
+                services.AddSingleton<AuthService>();
                 services.AddSingleton<TimerApiService>();
                 services.AddSingleton<BlockedUserService>();
                 services.AddSingleton<BotService>();

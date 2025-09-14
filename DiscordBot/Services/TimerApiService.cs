@@ -8,37 +8,34 @@ namespace DiscordBot.Services;
 
 public class TimerApiService
 {
-    private readonly HttpClient _httpClient;
+    private readonly AuthService _authService;
     private readonly ILogger<TimerApiService> _logger;
-    private readonly string _apiBaseUrl;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public TimerApiService(HttpClient httpClient, IConfiguration configuration, ILogger<TimerApiService> logger)
+    public TimerApiService(AuthService authService, ILogger<TimerApiService> logger)
     {
-        _httpClient = httpClient;
+        _authService = authService;
         _logger = logger;
-        _apiBaseUrl = configuration["API:BaseUrl"] ?? "https://localhost:7001";
         
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = true
         };
-        
-        // Configure HTTP client to ignore SSL certificate errors in development
-        _httpClient.BaseAddress = new Uri(_apiBaseUrl);
     }
 
     public async Task<TimerResponse?> CreateTimerAsync(CreateTimerRequest request)
     {
         try
         {
+            using var httpClient = await _authService.GetAuthenticatedHttpClientAsync();
+            
             var json = JsonSerializer.Serialize(request, _jsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             _logger.LogInformation($"Sending timer request to API: {json}");
             
-            var response = await _httpClient.PostAsync("/api/timer", content);
+            var response = await httpClient.PostAsync("/api/timer", content);
             
             if (response.IsSuccessStatusCode)
             {
@@ -65,7 +62,8 @@ public class TimerApiService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/timer/expired");
+            using var httpClient = await _authService.GetAuthenticatedHttpClientAsync();
+            var response = await httpClient.GetAsync("/api/timer/expired");
             
             if (response.IsSuccessStatusCode)
             {
@@ -90,7 +88,8 @@ public class TimerApiService
     {
         try
         {
-            var response = await _httpClient.PostAsync($"/api/timer/{timerId}/complete", null);
+            using var httpClient = await _authService.GetAuthenticatedHttpClientAsync();
+            var response = await httpClient.PostAsync($"/api/timer/{timerId}/complete", null);
             
             if (response.IsSuccessStatusCode)
             {

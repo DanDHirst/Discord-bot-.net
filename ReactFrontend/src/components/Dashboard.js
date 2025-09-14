@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiService from '../services/apiService';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -19,8 +19,8 @@ const Dashboard = () => {
       setLoading(true);
       
       // Fetch blocked users count
-      const blockedUsersResponse = await axios.get('/api/blockedusers');
-      const blockedUsersCount = blockedUsersResponse.data.blockedUsers.length;
+      const blockedUsersData = await apiService.getBlockedUsers();
+      const blockedUsersCount = blockedUsersData.blockedUsers.length;
 
       // Fetch timer statistics (this would need an endpoint)
       // For now, we'll use placeholder data

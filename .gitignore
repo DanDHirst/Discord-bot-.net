@@ -18,8 +18,8 @@ out/
 timers.db
 
 # Configuration files with secrets (IMPORTANT!)
-appsettings.json
-appsettings.*.json
+# Note: For this proof of concept, appsettings.json files are included in git
+# In production, these should be excluded for security
 !appsettings.Development.json.template
 
 # Logs
