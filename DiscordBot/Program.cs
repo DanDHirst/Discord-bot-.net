@@ -140,10 +140,22 @@ public class BotService
         }
 
         // Handle TIMER command - matches "TIMER <number>" or "TIMER <number> <message>"
-        var timerMatch = Regex.Match(content, @"^TIMER\s+(\d+)(?:\s+(.+))?$", RegexOptions.IgnoreCase);
+        // Updated regex to catch negative numbers and better error handling
+        var timerMatch = Regex.Match(content, @"^TIMER\s+(-?\d+)(?:\s+(.+))?$", RegexOptions.IgnoreCase);
         if (timerMatch.Success)
         {
             await HandleTimerCommand(message, timerMatch);
+            return;
+        }
+        
+        // Check if user tried to use TIMER but with invalid format
+        if (content.ToUpperInvariant().StartsWith("TIMER"))
+        {
+            await message.Channel.SendMessageAsync("⚠️ Invalid timer format!\n" +
+                                                   "Usage: `TIMER <minutes>` or `TIMER <minutes> <reminder message>`\n" +
+                                                   "Examples:\n" +
+                                                   "• `TIMER 5` - Set a 5-minute timer\n" +
+                                                   "• `TIMER 10 Check the oven` - Timer with reminder");
             return;
         }
 
@@ -160,8 +172,11 @@ public class BotService
 
             if (!int.TryParse(durationString, out var duration) || duration < 1 || duration > 1440)
             {
-                await message.Channel.SendMessageAsync("⚠️ Please provide a valid duration between 1 and 1440 minutes (24 hours).\n" +
-                                                       "Usage: `TIMER <minutes>` or `TIMER <minutes> <reminder message>`");
+                await message.Channel.SendMessageAsync("⚠️ Invalid timer format!\n" +
+                                                       "Usage: `TIMER <minutes>` or `TIMER <minutes> <reminder message>`\n" +
+                                                       "Examples:\n" +
+                                                       "• `TIMER 5` - Set a 5-minute timer\n" +
+                                                       "• `TIMER 10 Check the oven` - Timer with reminder");
                 return;
             }
 
