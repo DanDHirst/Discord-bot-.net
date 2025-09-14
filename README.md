@@ -107,10 +107,11 @@ Once the bot is running and in your Discord server:
 ```
 
 ⚠️ **Security Notes:**
-- Change `SecretKey` to a strong, random 32+ character string
-- Change `ApiKey` to a strong, random string
+- For this proof of concept, `appsettings.json` files are included in git for easy setup
+- In production, you should exclude `appsettings.json` from git and use secure configuration
+- Change `SecretKey` to a strong, random 32+ character string for production use
+- Change `ApiKey` to a strong, random string for production use
 - Use the same `ApiKey` in both API and DiscordBot appsettings.json
-- Never commit appsettings.json to git (it's already in .gitignore)
 
 #### Run the API
 ```bash
